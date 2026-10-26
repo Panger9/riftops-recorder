@@ -1,6 +1,6 @@
 # RiftOps recorder
 
-Read-only mirror of the recorder of the [RiftOps](https://riftops.fp-labs.net) desktop app, version 0.2.5. Nobody works in this repository; it is rewritten from the RiftOps source for every desktop release, and each release has a tag (`desktop-v<version>`).
+Read-only mirror of the recorder of the [RiftOps](https://riftops.fp-labs.net) desktop app, version 0.2.6. Nobody works in this repository; it is rewritten from the RiftOps source for every desktop release, and each release has a tag (`desktop-v<version>`).
 
 The recorder records one League of Legends game (OBS game capture with the game's audio) and runs as its own process next to the desktop app. It links libobs and is therefore free software under the GNU General Public License v3 or later, see [LICENSE](LICENSE).
 

@@ -147,9 +147,15 @@ fn output_size(width: u32, height: u32) -> (u32, u32) {
     (width / 4 * 4, height / 2 * 2)
 }
 
-/// Constant bitrate that keeps fights readable: about 6 Mbit/s at 1080p30.
-fn video_kbps(width: u32, height: u32, fps: u32) -> i64 {
+/// Peak bitrate that keeps fights readable: about 6 Mbit/s at 1080p30.
+fn peak_kbps(width: u32, height: u32, fps: u32) -> i64 {
     (width as i64 * height as i64 * fps as i64 / 10_000).clamp(2_500, 8_000)
+}
+
+/// Average bitrate of the variable rate: half the peak. Lane phases and
+/// the map change little and take far less, fights take up to the peak.
+fn average_kbps(width: u32, height: u32, fps: u32) -> i64 {
+    peak_kbps(width, height, fps) / 2
 }
 
 fn pick_encoder(context: &ObsContext) -> ObsVideoEncoderType {
@@ -268,10 +274,13 @@ fn main() {
 
     let encoder = pick_encoder(&context);
     let mut video_settings = context.data().unwrap_or_else(|error| fail(format!("{error:?}")));
-    let _ = video_settings.set_string("rate_control", "CBR");
-    let _ = video_settings.set_int("bitrate", video_kbps(out_width, out_height, args.fps));
-    // A keyframe every second keeps seeking and perspective switches instant.
-    let _ = video_settings.set_int("keyint_sec", 1);
+    let average = average_kbps(out_width, out_height, args.fps);
+    let peak = peak_kbps(out_width, out_height, args.fps);
+    let _ = video_settings.set_string("rate_control", "VBR");
+    let _ = video_settings.set_int("bitrate", average);
+    let _ = video_settings.set_int("max_bitrate", peak);
+    // A keyframe every two seconds keeps seeking and perspective switches quick at a smaller file.
+    let _ = video_settings.set_int("keyint_sec", 2);
     let _ = video_settings.set_string("profile", "high");
     match encoder {
         ObsVideoEncoderType::OBS_NVENC_H264_TEX => {
@@ -279,9 +288,15 @@ fn main() {
             let _ = video_settings.set_string("tune", "hq");
         }
         ObsVideoEncoderType::H264_TEXTURE_AMF => {
+            // AMF has no peak setting: its VBR peaks at 1.5 times the target.
+            let _ = video_settings.set_string("rate_control", "vbr");
+            let _ = video_settings.set_int("bitrate", peak * 2 / 3);
             let _ = video_settings.set_string("preset", "quality");
         }
         ObsVideoEncoderType::OBS_X264 => {
+            // x264's VBR is a quality target with the bitrate as its cap.
+            let _ = video_settings.set_int("crf", 23);
+            let _ = video_settings.set_int("bitrate", peak);
             let _ = video_settings.set_string("preset", "veryfast");
         }
         _ => {}
@@ -332,9 +347,11 @@ mod tests {
 
     #[test]
     fn bitrate_follows_the_picture() {
-        assert_eq!(video_kbps(1920, 1080, 30), 6_220);
-        assert_eq!(video_kbps(1280, 720, 30), 2_764);
-        assert_eq!(video_kbps(800, 600, 30), 2_500);
-        assert_eq!(video_kbps(1920, 1080, 60), 8_000);
+        assert_eq!(peak_kbps(1920, 1080, 30), 6_220);
+        assert_eq!(peak_kbps(1280, 720, 30), 2_764);
+        assert_eq!(peak_kbps(800, 600, 30), 2_500);
+        assert_eq!(peak_kbps(1920, 1080, 60), 8_000);
+        assert_eq!(average_kbps(1920, 1080, 30), 3_110);
+        assert_eq!(average_kbps(800, 600, 30), 1_250);
     }
 }

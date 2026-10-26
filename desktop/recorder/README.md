@@ -1,6 +1,6 @@
 # RiftOps recorder
 
-Records one League of Legends game for the RiftOps desktop app: OBS game capture of the game window (fullscreen included) with the game's audio, hardware H.264 at constant bitrate, one keyframe per second, MP4.
+Records one League of Legends game for the RiftOps desktop app: OBS game capture of the game window (fullscreen included) with the game's audio, hardware H.264 at variable bitrate, one keyframe every two seconds, MP4.
 
 It is a separate program under the GPL v3 or later because it links libobs (GPL v2 or later). The desktop app only starts it and talks to it over stdin and stdout; the protocol is described at the top of [src/main.rs](src/main.rs).
 
